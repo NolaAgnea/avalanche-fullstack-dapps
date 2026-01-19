@@ -3,13 +3,19 @@
 import { WagmiProvider, createConfig, http } from "wagmi";
 import { avalancheFuji } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { injected } from "wagmi/connectors";
 
 const queryClient = new QueryClient();
 
 const config = createConfig({
   chains: [avalancheFuji],
+  connectors: [
+    injected({
+      shimDisconnect: true, // Proper disconnect handling
+    }),
+  ],
   transports: {
-    [avalancheFuji.id]: http(),
+    [avalancheFuji.id]: http("https://api.avax-test.network/ext/bc/C/rpc"),
   },
 });
 

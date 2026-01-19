@@ -71,6 +71,9 @@ export default function Page() {
     address: CONTRACT_ADDRESS,
     abi: SIMPLE_STORAGE_ABI,
     functionName: "getValue",
+    query: {
+      enabled: isConnected, // Hanya fetch jika wallet connected
+    },
   });
 
   // ==============================
@@ -89,6 +92,27 @@ export default function Page() {
   // ==============================
   // 🔹 HANDLERS
   // ==============================
+
+  // Handler untuk refresh value
+  const handleRefreshValue = () => {
+    if (!isConnected) {
+      showNotification("error", "Please connect wallet first to read contract value");
+      return;
+    }
+    refetch();
+  };
+
+  // Handler untuk disconnect wallet
+  const handleDisconnect = () => {
+    disconnect();
+    // Clear localStorage untuk prevent auto-reconnect
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("wagmi.store");
+      localStorage.removeItem("wagmi.connected");
+      localStorage.removeItem("wagmi.wallet");
+    }
+    showNotification("info", "Wallet disconnected");
+  };
 
   const handleSetValue = async () => {
     // Validation (Task 5)
@@ -124,7 +148,7 @@ export default function Page() {
               showNotification("error", `Transaction failed: ${error.message.slice(0, 50)}`);
             }
           },
-        }
+        },
       );
     } catch (error: any) {
       showNotification("error", `Error: ${error.message}`);
@@ -172,6 +196,15 @@ export default function Page() {
     }
   }, [connectError]);
 
+  // Auto-reset value saat disconnect wallet
+  useEffect(() => {
+    if (!isConnected) {
+      // Reset input value saat disconnect
+      setInputValue("");
+      setTxHash(undefined);
+    }
+  }, [isConnected]);
+
   // ==============================
   // 🔹 UI
   // ==============================
@@ -216,7 +249,7 @@ export default function Page() {
               </button>
             )}
 
-            <button onClick={() => disconnect()} className="text-red-400 text-sm underline hover:text-red-300">
+            <button onClick={handleDisconnect} className="text-red-400 text-sm underline hover:text-red-300">
               Disconnect
             </button>
           </div>
@@ -228,9 +261,18 @@ export default function Page() {
         <div className="border-t border-gray-700 pt-4 space-y-2">
           <p className="text-sm text-gray-400">Contract Value (read)</p>
 
-          {isReading ? <p className="text-gray-500">Loading...</p> : <p className="text-2xl font-bold">{value?.toString() || "0"}</p>}
+          {!isConnected ? (
+            <div className="space-y-2">
+              <p className="text-2xl font-bold text-gray-500">--</p>
+              <p className="text-xs text-gray-500">Connect wallet to view contract value</p>
+            </div>
+          ) : isReading ? (
+            <p className="text-gray-500">Loading...</p>
+          ) : (
+            <p className="text-2xl font-bold">{value?.toString() || "0"}</p>
+          )}
 
-          <button onClick={() => refetch()} className="text-sm underline text-gray-300 hover:text-white" disabled={isReading}>
+          <button onClick={handleRefreshValue} className="text-sm underline text-gray-300 hover:text-white disabled:opacity-50" disabled={isReading || !isConnected}>
             {isReading ? "Refreshing..." : "Refresh value"}
           </button>
         </div>
